@@ -76,6 +76,7 @@ type ImplantConfig struct {
 	C2 []ImplantC2
 
 	MTLSc2Enabled bool
+	WGc2Enabled   bool
 	HTTPc2Enabled bool
 	DNSc2Enabled  bool
 

@@ -137,6 +137,7 @@ func ImplantConfigFromProtobuf(pbConfig *clientpb.ImplantConfig) (string, *model
 	// Copy C2
 	cfg.C2 = copyC2List(pbConfig.C2)
 	cfg.MTLSc2Enabled = isC2Enabled([]string{"mtls"}, cfg.C2)
+	cfg.WGc2Enabled = isC2Enabled([]string{"wg"}, cfg.C2)
 	cfg.HTTPc2Enabled = isC2Enabled([]string{"http", "https"}, cfg.C2)
 	cfg.DNSc2Enabled = isC2Enabled([]string{"dns"}, cfg.C2)
 	cfg.NamePipec2Enabled = isC2Enabled([]string{"namedpipe"}, cfg.C2)
@@ -402,6 +403,7 @@ func renderSliverGoCode(name string, config *models.ImplantConfig, goConfig *gog
 	buildLog.Infof("Generating new sliver binary '%s'", name)
 
 	config.MTLSc2Enabled = isC2Enabled([]string{"mtls"}, config.C2)
+	config.WGc2Enabled = isC2Enabled([]string{"wg"}, config.C2)
 	config.HTTPc2Enabled = isC2Enabled([]string{"http", "https"}, config.C2)
 	config.DNSc2Enabled = isC2Enabled([]string{"dns"}, config.C2)
 	config.NamePipec2Enabled = isC2Enabled([]string{"namedpipe"}, config.C2)

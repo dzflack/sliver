@@ -64,6 +64,7 @@ type DaemonConfig struct {
 // JobConfig - Restart Jobs on Load
 type JobConfig struct {
 	MTLS []*MTLSJobConfig `json:"mtls,omitempty"`
+	WG   []*WGJobConfig   `json:"wg,omitempty"`
 	DNS  []*DNSJobConfig  `json:"dns,omitempty"`
 	HTTP []*HTTPJobConfig `json:"http,omitempty"`
 }
@@ -75,6 +76,12 @@ type MTLSJobConfig struct {
 	JobID string `json:"jobid"`
 }
 
+// MTLSJobConfig - Per-type job configs
+type WGJobConfig struct {
+	Host  string `json:"host"`
+	Port  uint16 `json:"port"`
+	JobID string `json:"jobid"`
+}
 type DNSJobConfig struct {
 	Domains  []string `json:"domains"`
 	Canaries bool     `json:"canaries"`

@@ -159,6 +159,16 @@ message MTLSListener {
   uint32 JobID = 1;
 }
 
+message WGListenerReq {
+  string Host = 1;
+  uint32 Port = 2;
+  bool Persistent = 3;
+}
+
+message WGListener {
+  uint32 JobID = 1;
+}
+
 message DNSListenerReq {
   repeated string Domains = 1;
   bool Canaries = 2;

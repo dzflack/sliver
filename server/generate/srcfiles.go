@@ -132,6 +132,7 @@ var (
 
 		"transports/crypto.go",
 		"transports/tcp-mtls.go",
+		"transports/tcp-wg.go",
 		"transports/tcp-http.go",
 		"transports/udp-dns.go",
 		"transports/named-pipe.go",

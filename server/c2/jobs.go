@@ -64,6 +64,40 @@ func StartMTLSListenerJob(host string, listenPort uint16) (*core.Job, error) {
 	return job, nil
 }
 
+func StartWGListenerJob(host string, listenPort uint16) (*core.Job, error) {
+	bind := fmt.Sprintf("%s:%d", host, listenPort)
+	ln, dev, err := StartWGListener(host, listenPort)
+	if err != nil {
+		return nil, err // If we fail to bind don't setup the Job
+	}
+
+	job := &core.Job{
+		ID:          core.NextJobID(),
+		Name:        "wg",
+		Description: fmt.Sprintf("wg listener %s", bind),
+		Protocol:    "udp",
+		Port:        listenPort,
+		JobCtrl:     make(chan bool),
+	}
+
+	go func() {
+		<-job.JobCtrl
+		jobLog.Infof("Stopping wg listener (%d) ...", job.ID)
+		err = ln.Close() // Kills listener GoRoutines in StartWGListener()
+		if err != nil {
+			jobLog.Fatal("Error closing listener", err)
+		}
+		err = dev.Down() // Kill wg tunnel
+		if err != nil {
+			jobLog.Fatal("Error closing wg tunnel", err)
+		}
+		core.Jobs.Remove(job)
+	}()
+	core.Jobs.Add(job)
+
+	return job, nil
+}
+
 func StartDNSListenerJob(domains []string, canaries bool, listenPort uint16) (*core.Job, error) {
 	server := StartDNSListener(domains, canaries)
 	description := fmt.Sprintf("%s (canaries %v)", strings.Join(domains, " "), canaries)
@@ -264,6 +298,14 @@ func StartPersistentJobs(cfg *configs.ServerConfig) error {
 
 	for _, j := range cfg.Jobs.MTLS {
 		job, err := StartMTLSListenerJob(j.Host, j.Port)
+		if err != nil {
+			return err
+		}
+		job.PersistentID = j.JobID
+	}
+
+	for _, j := range cfg.Jobs.WG {
+		job, err := StartWGListenerJob(j.Host, j.Port)
 		if err != nil {
 			return err
 		}

@@ -288,6 +288,9 @@ func parseCompileFlags(ctx *grumble.Context) *clientpb.ImplantConfig {
 	mtlsC2 := parseMTLSc2(ctx.Flags.String("mtls"))
 	c2s = append(c2s, mtlsC2...)
 
+	wgC2 := parseWGc2(ctx.Flags.String("wg"))
+	c2s = append(c2s, wgC2...)
+
 	httpC2 := parseHTTPc2(ctx.Flags.String("http"))
 	c2s = append(c2s, httpC2...)
 
@@ -307,8 +310,8 @@ func parseCompileFlags(ctx *grumble.Context) *clientpb.ImplantConfig {
 		symbolObfuscation = !ctx.Flags.Bool("skip-symbols")
 	}
 
-	if len(mtlsC2) == 0 && len(httpC2) == 0 && len(dnsC2) == 0 && len(namedPipeC2) == 0 && len(tcpPivotC2) == 0 {
-		fmt.Printf(Warn + "Must specify at least one of --mtls, --http, --dns, --named-pipe, or --tcp-pivot\n")
+	if len(mtlsC2) == 0 && len(wgC2) == 0 && len(httpC2) == 0 && len(dnsC2) == 0 && len(namedPipeC2) == 0 && len(tcpPivotC2) == 0 {
+		fmt.Printf(Warn + "Must specify at least one of --mtls, --wg, --http, --dns, --named-pipe, or --tcp-pivot\n")
 		return nil
 	}
 
@@ -437,6 +440,25 @@ func parseMTLSc2(args string) []*clientpb.ImplantC2 {
 	}
 	for index, arg := range strings.Split(args, ",") {
 		uri := url.URL{Scheme: "mtls"}
+		uri.Host = arg
+		if uri.Port() == "" {
+			uri.Host = fmt.Sprintf("%s:%d", uri.Host, defaultMTLSLPort)
+		}
+		c2s = append(c2s, &clientpb.ImplantC2{
+			Priority: uint32(index),
+			URL:      uri.String(),
+		})
+	}
+	return c2s
+}
+
+func parseWGc2(args string) []*clientpb.ImplantC2 {
+	c2s := []*clientpb.ImplantC2{}
+	if args == "" {
+		return c2s
+	}
+	for index, arg := range strings.Split(args, ",") {
+		uri := url.URL{Scheme: "wg"}
 		uri.Host = arg
 		if uri.Port() == "" {
 			uri.Host = fmt.Sprintf("%s:%d", uri.Host, defaultMTLSLPort)
