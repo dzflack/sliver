@@ -151,7 +151,6 @@ func BindCommands(app *grumble.App, rpc rpcpb.SliverRPCClient) {
 
 			f.String("i", "server-tun-ip", "192.168.175.1", "IPv4 address of server tun interface")
 			f.Int("n", "nport", defaultWGNPort, "server tun interface listen port")
-			f.String("a", "implant-tun-ip", "192.168.175.2", "IPv4 address of implant tun interface")
 
 			f.Int("t", "timeout", defaultTimeout, "command timeout in seconds")
 			f.Bool("p", "persistent", false, "make persistent across restarts")
