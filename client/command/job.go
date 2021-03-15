@@ -124,13 +124,15 @@ func startMTLSListener(ctx *grumble.Context, rpc rpcpb.SliverRPCClient) {
 }
 
 func startWGListener(ctx *grumble.Context, rpc rpcpb.SliverRPCClient) {
-	server := ctx.Flags.String("server")
 	lport := uint16(ctx.Flags.Int("lport"))
+	tunIP := ctx.Flags.String("server-tun-ip")
+	nport := uint16(ctx.Flags.Int("nport"))
 
 	fmt.Printf(Info + "Starting Wireguard listener ...\n")
 	mtls, err := rpc.StartWGListener(context.Background(), &clientpb.WGListenerReq{
-		Host:       server,
 		Port:       uint32(lport),
+		TunIP:      tunIP,
+		NPort:      uint32(nport),
 		Persistent: ctx.Flags.Bool("persistent"),
 	})
 	if err != nil {

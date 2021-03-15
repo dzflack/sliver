@@ -64,9 +64,8 @@ func StartMTLSListenerJob(host string, listenPort uint16) (*core.Job, error) {
 	return job, nil
 }
 
-func StartWGListenerJob(host string, listenPort uint16) (*core.Job, error) {
-	bind := fmt.Sprintf("%s:%d", host, listenPort)
-	ln, dev, err := StartWGListener(host, listenPort)
+func StartWGListenerJob(listenPort uint16, tunIP string, nListenPort uint16) (*core.Job, error) {
+	ln, dev, err := StartWGListener(listenPort, tunIP, nListenPort)
 	if err != nil {
 		return nil, err // If we fail to bind don't setup the Job
 	}
@@ -74,7 +73,7 @@ func StartWGListenerJob(host string, listenPort uint16) (*core.Job, error) {
 	job := &core.Job{
 		ID:          core.NextJobID(),
 		Name:        "wg",
-		Description: fmt.Sprintf("wg listener %s", bind),
+		Description: fmt.Sprintf("wg listener port: %d", listenPort),
 		Protocol:    "udp",
 		Port:        listenPort,
 		JobCtrl:     make(chan bool),
@@ -305,7 +304,7 @@ func StartPersistentJobs(cfg *configs.ServerConfig) error {
 	}
 
 	for _, j := range cfg.Jobs.WG {
-		job, err := StartWGListenerJob(j.Host, j.Port)
+		job, err := StartWGListenerJob(j.Port, j.TunIP, j.NPort)
 		if err != nil {
 			return err
 		}

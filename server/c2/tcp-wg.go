@@ -1,6 +1,7 @@
 package c2
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/bishopfox/sliver/protobuf/sliverpb"
+	"github.com/bishopfox/sliver/server/certs"
 	"github.com/bishopfox/sliver/server/core"
 	serverHandlers "github.com/bishopfox/sliver/server/handlers"
 	"github.com/bishopfox/sliver/server/log"
@@ -21,31 +23,62 @@ var (
 	wgLog = log.NamedLogger("c2", "wg")
 )
 
-func StartWGListener(bindIface string, port uint16) (net.Listener, *device.Device, error) {
+func StartWGListener(port uint16, tunIP string, netstackPort uint16) (net.Listener, *device.Device, error) {
 	StartPivotListener()
-	wgLog.Infof("Starting Wireguard listener on %s:%d", bindIface, port)
-	// host := bindIface
+	wgLog.Infof("Starting Wireguard listener on port: %d", port)
 
 	tun, tnet, err := netstack.CreateNetTUN(
-		[]net.IP{net.ParseIP("192.168.2.1")},
-		[]net.IP{net.ParseIP("8.8.8.8"), net.ParseIP("8.8.4.4")},
+		[]net.IP{net.ParseIP(tunIP)},
+		[]net.IP{net.ParseIP("127.0.0.1")}, // We don't use DNS in the WG listener
 		1420,
 	)
 	if err != nil {
 		wgLog.Panic(err)
 	}
-	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelVerbose, ""))
-	dev.IpcSet(`private_key=b8055828ad81690bcc015f32cd1c42caf247ffa7eed164356336df11a233a045
-listen_port=53
-public_key=508f17a2c841c152fc926e986690aa5ea81e44504bea68e52b6fb5c65201de77
-allowed_ip=192.168.2.2/32
-`)
+
+	// Get existing certs
+	privateKey, _, err := certs.GetWGServerKeys()
+
+	if err != nil {
+		privateKey, _, err = certs.GenerateWGServerKeys()
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(int(wgLog.Level), "[c2/wg] "))
+
+	wgConf := bytes.NewBuffer(nil)
+	fmt.Fprintf(wgConf, "private_key=%s\n", privateKey)
+	fmt.Fprintf(wgConf, "listen_port=%d\n", port)
+
+	peers, err := certs.GetWGPeers()
+	if err != nil && err != certs.ErrWGPeerDoesNotExist {
+		return nil, nil, err
+	}
+
+	for k, v := range peers {
+		fmt.Fprintf(wgConf, "public_key=%s\n", k)
+		fmt.Fprintf(wgConf, "allowed_ip=%s/32\n", v)
+	}
+
+	if err := dev.IpcSetOperation(bufio.NewReader(wgConf)); err != nil {
+		return nil, nil, err
+	}
+
 	dev.Up()
 
-	listener, err := tnet.ListenTCP(&net.TCPAddr{IP: net.ParseIP("192.168.2.1"), Port: 8888})
+	listener, err := tnet.ListenTCP(&net.TCPAddr{IP: net.ParseIP(tunIP), Port: int(netstackPort)})
 	if err != nil {
 		wgLog.Panic(err)
 	}
+
+	conf, err := dev.IpcGet()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	fmt.Println(conf)
 
 	go acceptWGSliverConnections(listener)
 	return listener, dev, nil

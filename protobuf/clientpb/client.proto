@@ -160,9 +160,10 @@ message MTLSListener {
 }
 
 message WGListenerReq {
-  string Host = 1;
-  uint32 Port = 2;
-  bool Persistent = 3;
+  uint32 Port = 1;
+  string TunIP = 2;
+  uint32 NPort = 3;
+  bool Persistent = 4;
 }
 
 message WGListener {

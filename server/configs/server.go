@@ -76,10 +76,11 @@ type MTLSJobConfig struct {
 	JobID string `json:"jobid"`
 }
 
-// MTLSJobConfig - Per-type job configs
+// WGJobConfig - Per-type job configs
 type WGJobConfig struct {
-	Host  string `json:"host"`
 	Port  uint16 `json:"port"`
+	TunIP string `json:"server_tun_ip"`
+	NPort uint16 `json:"nport"`
 	JobID string `json:"jobid"`
 }
 type DNSJobConfig struct {
@@ -140,6 +141,16 @@ func (c *ServerConfig) AddMTLSJob(config *MTLSJobConfig) error {
 	}
 	config.JobID = getRandomID()
 	c.Jobs.MTLS = append(c.Jobs.MTLS, config)
+	return c.Save()
+}
+
+// AddWGJob - Add Job Configs
+func (c *ServerConfig) AddWGJob(config *WGJobConfig) error {
+	if c.Jobs == nil {
+		c.Jobs = &JobConfig{}
+	}
+	config.JobID = getRandomID()
+	c.Jobs.WG = append(c.Jobs.WG, config)
 	return c.Save()
 }
 
