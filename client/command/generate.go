@@ -461,7 +461,7 @@ func parseWGc2(args string) []*clientpb.ImplantC2 {
 		uri := url.URL{Scheme: "wg"}
 		uri.Host = arg
 		if uri.Port() == "" {
-			uri.Host = fmt.Sprintf("%s:%d", uri.Host, defaultMTLSLPort)
+			uri.Host = fmt.Sprintf("%s:%d", uri.Host, defaultWGLPort)
 		}
 		c2s = append(c2s, &clientpb.ImplantC2{
 			Priority: uint32(index),

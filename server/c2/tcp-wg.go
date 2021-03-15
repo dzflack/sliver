@@ -73,13 +73,6 @@ func StartWGListener(port uint16, tunIP string, netstackPort uint16) (net.Listen
 		wgLog.Panic(err)
 	}
 
-	conf, err := dev.IpcGet()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	fmt.Println(conf)
-
 	go acceptWGSliverConnections(listener)
 	return listener, dev, nil
 }
