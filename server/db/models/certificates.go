@@ -55,7 +55,7 @@ type WGPeers struct {
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 	PrivKey   string
 	PubKey    string
-	TunIP     string
+	TunIP     string `gorm:"unique"`
 }
 
 // BeforeCreate - GORM hook to automatically set values

@@ -60,6 +60,10 @@ message ImplantConfig {
   bool Evasion = 31;
   bool ObfuscateSymbols = 30;
 
+  string WGImplantPrivKey = 33;
+  string WGServerPubKey = 34;
+  string WGTunIP = 35;
+
   uint32 ReconnectInterval = 8;
   uint32 MaxConnectionErrors = 9;
 

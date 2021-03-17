@@ -370,6 +370,17 @@ func parseCompileFlags(ctx *grumble.Context) *clientpb.ImplantConfig {
 		return nil
 	}
 
+	// var tunIP string
+	// if wg := ctx.Flags.String("wg"); wg != "" {
+	// 	if tunIP = ctx.Flags.String("tun-ip"); tunIP != "" {
+	// 		if err := checkUniqueIP(tunIP); err != nil {
+	// 			tunIP = genUniqueIP()
+	// 		}
+	// 	} else {
+	// 		tunIP = genUniqueIP()
+	// 	}
+	// }
+
 	config := &clientpb.ImplantConfig{
 		GOOS:             targetOS,
 		GOARCH:           arch,
@@ -379,6 +390,8 @@ func parseCompileFlags(ctx *grumble.Context) *clientpb.ImplantConfig {
 		ObfuscateSymbols: symbolObfuscation,
 		C2:               c2s,
 		CanaryDomains:    canaryDomains,
+
+		WGTunIP: tunIP,
 
 		ReconnectInterval:   uint32(reconnectInterval),
 		MaxConnectionErrors: uint32(maxConnectionErrors),
@@ -458,6 +471,7 @@ func parseWGc2(args string) []*clientpb.ImplantC2 {
 		return c2s
 	}
 	for index, arg := range strings.Split(args, ",") {
+		arg = strings.ToLower(arg)
 		uri := url.URL{Scheme: "wg"}
 		uri.Host = arg
 		if uri.Port() == "" {

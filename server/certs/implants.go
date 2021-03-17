@@ -23,6 +23,13 @@ const (
 	ImplantCA = "sliver"
 )
 
+// ImplantGenerateWGKeys - Generate WG keys for an implant
+func ImplantGenerateWGKeys(sliverName string) ([]byte, []byte, error) {
+	cert, key := GenerateECCCertificate(ImplantCA, sliverName, false, true)
+	err := saveCertificate(ImplantCA, ECCKey, sliverName, cert, key)
+	return cert, key, err
+}
+
 // ImplantGenerateECCCertificate - Generate a certificate signed with a given CA
 func ImplantGenerateECCCertificate(sliverName string) ([]byte, []byte, error) {
 	cert, key := GenerateECCCertificate(ImplantCA, sliverName, false, true)

@@ -40,7 +40,8 @@ func StartWGListener(port uint16, tunIP string, netstackPort uint16) (net.Listen
 	privateKey, _, err := certs.GetWGServerKeys()
 
 	if err != nil {
-		privateKey, _, err = certs.GenerateWGServerKeys()
+		isPeer := false
+		privateKey, _, err = certs.GenerateWGKeys(isPeer)
 		if err != nil {
 			return nil, nil, err
 		}

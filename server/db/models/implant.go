@@ -73,6 +73,10 @@ type ImplantConfig struct {
 	ReconnectInterval   uint32
 	MaxConnectionErrors uint32
 
+	WGImplantPrivKey string
+	WGServerPubKey   string
+	WGTunIP          string
+
 	C2 []ImplantC2
 
 	MTLSc2Enabled bool

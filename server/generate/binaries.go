@@ -113,6 +113,9 @@ func ImplantConfigFromProtobuf(pbConfig *clientpb.ImplantConfig) (string, *model
 	cfg.ObfuscateSymbols = pbConfig.ObfuscateSymbols
 	// cfg.CanaryDomains = pbConfig.CanaryDomains
 
+	cfg.WGImplantPrivKey = pbConfig.WGImplantPrivKey
+	cfg.WGServerPubKey = pbConfig.WGServerPubKey
+	cfg.WGTunIP = pbConfig.WGTunIP
 	cfg.ReconnectInterval = pbConfig.ReconnectInterval
 	cfg.MaxConnectionErrors = pbConfig.MaxConnectionErrors
 

@@ -8,6 +8,7 @@ import (
 	"github.com/bishopfox/sliver/server/db/models"
 	"github.com/bishopfox/sliver/server/log"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"gorm.io/gorm"
 )
 
 var (
@@ -64,17 +65,17 @@ func GetWGServerKeys() (string, string, error) {
 	return wgKeysModel.PrivKey, wgKeysModel.PubKey, nil
 }
 
-func GenerateWGServerKeys() (string, string, error) {
-	privKey, pubKey := genWGServerKeys()
+func GenerateWGKeys(isPeer bool) (string, string, error) {
+	privKey, pubKey := genWGKeys()
 
-	if err := saveWGServerKeys(privKey, pubKey); err != nil {
+	if err := saveWGKeys(isPeer, privKey, pubKey); err != nil {
 		return "", "", err
 	}
 	return privKey, pubKey, nil
 }
 
-func genWGServerKeys() (string, string) {
-	wgKeysLog.Infof("Generating WG keys for tun server")
+func genWGKeys() (string, string) {
+	wgKeysLog.Infof("Generating WG keys")
 
 	privateKey, err := wgtypes.GeneratePrivateKey()
 	if err != nil {
@@ -84,18 +85,28 @@ func genWGServerKeys() (string, string) {
 	return hex.EncodeToString(privateKey[:]), hex.EncodeToString(publicKey[:])
 }
 
-// saveWGServerKeys - Save WG server keys to the filesystem
-func saveWGServerKeys(privKey string, pubKey string) error {
+// saveWGKeys - Save WG keys to the filesystem
+func saveWGKeys(isPeer bool, privKey string, pubKey string) error {
 
-	wgKeysLog.Infof("Saving WG keys for tun server")
-
-	certModel := &models.WGKeys{
-		PrivKey: privKey,
-		PubKey:  pubKey,
-	}
-
+	wgKeysLog.Infof("Saving WG keys")
 	dbSession := db.Session()
-	result := dbSession.Create(&certModel)
+
+	var result *gorm.DB
+
+	if isPeer {
+		wgPeersModel := &models.WGPeers{
+			PrivKey: privKey,
+			PubKey:  pubKey,
+		}
+		result = dbSession.Create(&wgPeersModel)
+
+	} else {
+		wgKeysModel := &models.WGKeys{
+			PrivKey: privKey,
+			PubKey:  pubKey,
+		}
+		result = dbSession.Create(&wgKeysModel)
+	}
 
 	return result.Error
 }

@@ -50,9 +50,11 @@ import (
 var (
 	mtlsPingInterval = 30 * time.Second
 
-	keyPEM    = `{{.Config.Key}}`
-	certPEM   = `{{.Config.Cert}}`
-	caCertPEM = `{{.Config.CACert}}`
+	keyPEM           = `{{.Config.Key}}`
+	certPEM          = `{{.Config.Cert}}`
+	caCertPEM        = `{{.Config.CACert}}`
+	wgImplantPrivKey = `{{.Config.WGImplantPrivKey}}`
+	wgServerPubKey   = `{{.Config.WGServerPubKey}}`
 
 	readBufSize       = 16 * 1024 // 16kb
 	maxErrors         = getMaxConnectionErrors()
