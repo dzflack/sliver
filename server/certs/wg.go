@@ -3,7 +3,6 @@ package certs
 import (
 	"encoding/hex"
 	"errors"
-	"net"
 
 	"github.com/bishopfox/sliver/server/db"
 	"github.com/bishopfox/sliver/server/db/models"
@@ -20,9 +19,9 @@ var (
 )
 
 // GetWGSPeers - Get the WG peers
-func GetWGPeers() (map[string]net.IP, error) {
+func GetWGPeers() (map[string]string, error) {
 
-	peers := make(map[string]net.IP)
+	peers := make(map[string]string)
 	wgKeysLog.Infof("Getting WG peers")
 
 	wgPeerModel := models.WGPeer{}
@@ -66,10 +65,10 @@ func GetWGServerKeys() (string, string, error) {
 	return wgKeysModel.PrivKey, wgKeysModel.PubKey, nil
 }
 
-func GenerateWGKeys(isPeer bool) (string, string, error) {
+func GenerateWGKeys(isPeer bool, wgPeerTunIP string) (string, string, error) {
 	privKey, pubKey := genWGKeys()
 
-	if err := saveWGKeys(isPeer, privKey, pubKey); err != nil {
+	if err := saveWGKeys(isPeer, wgPeerTunIP, privKey, pubKey); err != nil {
 		wgKeysLog.Error("Error Saving WG keys: ", err)
 		return "", "", err
 	}
@@ -88,7 +87,7 @@ func genWGKeys() (string, string) {
 }
 
 // saveWGKeys - Save WG keys to the filesystem
-func saveWGKeys(isPeer bool, privKey string, pubKey string) error {
+func saveWGKeys(isPeer bool, wgPeerTunIP string, privKey string, pubKey string) error {
 
 	wgKeysLog.Infof("Saving WG keys")
 	dbSession := db.Session()
@@ -99,6 +98,7 @@ func saveWGKeys(isPeer bool, privKey string, pubKey string) error {
 		wgPeerModel := &models.WGPeer{
 			PrivKey: privKey,
 			PubKey:  pubKey,
+			TunIP:   wgPeerTunIP,
 		}
 		result = dbSession.Create(&wgPeerModel)
 

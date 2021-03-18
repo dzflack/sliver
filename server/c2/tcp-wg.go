@@ -42,12 +42,11 @@ func StartWGListener(port uint16, netstackPort uint16) (net.Listener, *device.De
 
 	if err != nil {
 		isPeer := false
-		privateKey, _, err = certs.GenerateWGKeys(isPeer)
+		privateKey, _, err = certs.GenerateWGKeys(isPeer, "")
 		if err != nil {
 			return nil, nil, err
 		}
 	}
-
 	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(int(wgLog.Level), "[c2/wg] "))
 
 	wgConf := bytes.NewBuffer(nil)

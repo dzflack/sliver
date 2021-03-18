@@ -24,8 +24,6 @@ package db
 */
 
 import (
-	"net"
-
 	"github.com/bishopfox/sliver/server/db/models"
 	"gorm.io/gorm"
 )
@@ -178,13 +176,13 @@ func WebsiteByName(name string) (*models.Website, error) {
 }
 
 // WGPeerTunIPs - Fetch a list of all wg peers tunnel ips
-func WGPeerTunIPs() ([]net.IP, error) {
+func WGPeerTunIPs() ([]string, error) {
 	wgPeers := []*models.WGPeer{}
 	err := Session().Where(&models.WGPeer{}).Find(&wgPeers).Error
 	if err != nil {
 		return nil, err
 	}
-	ips := []net.IP{}
+	ips := []string{}
 	for _, peer := range wgPeers {
 		ips = append(ips, peer.TunIP)
 	}

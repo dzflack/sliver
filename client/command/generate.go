@@ -866,8 +866,8 @@ func genUniqueIP() (net.IP, error) {
 
 	for _, address := range addressPool {
 		for _, peerTunIp := range peersTunIps {
-			if peerTunIp.Equal(net.ParseIP(address)) {
-				addressPool = remove(addressPool, []string{peerTunIp.String()})
+			if peerTunIp == address {
+				addressPool = remove(addressPool, []string{peerTunIp})
 				break
 			}
 		}

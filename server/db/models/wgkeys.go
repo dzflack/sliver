@@ -1,7 +1,6 @@
 package models
 
 import (
-	"net"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -33,7 +32,7 @@ type WGPeer struct {
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 	PrivKey   string
 	PubKey    string
-	TunIP     net.IP `gorm:"unique"`
+	TunIP     string `gorm:"unique"`
 }
 
 // BeforeCreate - GORM hook to automatically set values

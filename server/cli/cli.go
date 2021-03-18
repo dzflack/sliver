@@ -120,6 +120,7 @@ var rootCmd = &cobra.Command{
 
 		assets.Setup(false)
 		certs.SetupCAs()
+		certs.GenerateWGKeys(false, "")
 
 		serverConfig := configs.GetServerConfig()
 		c2.StartPersistentJobs(serverConfig)

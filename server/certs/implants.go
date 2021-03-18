@@ -24,9 +24,9 @@ const (
 )
 
 // ImplantGenerateWGKeys - Generate WG keys for implant
-func ImplantGenerateWGKeys() (string, string, error) {
+func ImplantGenerateWGKeys(wgPeerTunIP string) (string, string, error) {
 	isPeer := true
-	privKey, pubKey, err := GenerateWGKeys(isPeer)
+	privKey, pubKey, err := GenerateWGKeys(isPeer, wgPeerTunIP)
 
 	if err != nil {
 		wgKeysLog.Errorf("Error generating WG keys for peer: ", err)

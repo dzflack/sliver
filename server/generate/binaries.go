@@ -432,13 +432,14 @@ func renderSliverGoCode(name string, config *models.ImplantConfig, goConfig *gog
 
 	// WG Keys
 	if config.WGc2Enabled {
-		privKey, pubKey, err := certs.ImplantGenerateWGKeys()
+		implantPrivKey, _, err := certs.ImplantGenerateWGKeys(config.WGPeerTunIP)
+		_, serverPubKey, err := certs.GetWGServerKeys()
+
 		if err != nil {
 			return "", fmt.Errorf("Failed to embed implant wg keys: %s", err)
 		} else {
-			config.WGImplantPrivKey = privKey
-			config.WGServerPubKey = pubKey
-
+			config.WGImplantPrivKey = implantPrivKey
+			config.WGServerPubKey = serverPubKey
 		}
 	}
 
