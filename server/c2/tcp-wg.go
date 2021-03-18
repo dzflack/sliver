@@ -21,9 +21,10 @@ import (
 
 var (
 	wgLog = log.NamedLogger("c2", "wg")
+	tunIP = "192.168.174.1" // Don't let user configure this for now
 )
 
-func StartWGListener(port uint16, tunIP string, netstackPort uint16) (net.Listener, *device.Device, error) {
+func StartWGListener(port uint16, netstackPort uint16) (net.Listener, *device.Device, error) {
 	StartPivotListener()
 	wgLog.Infof("Starting Wireguard listener on port: %d", port)
 

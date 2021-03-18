@@ -42,6 +42,7 @@ import (
 	"github.com/bishopfox/sliver/protobuf/clientpb"
 	"github.com/bishopfox/sliver/protobuf/commonpb"
 	"github.com/bishopfox/sliver/protobuf/rpcpb"
+	"github.com/bishopfox/sliver/server/db"
 	"github.com/desertbit/grumble"
 )
 
@@ -370,16 +371,15 @@ func parseCompileFlags(ctx *grumble.Context) *clientpb.ImplantConfig {
 		return nil
 	}
 
-	// var tunIP string
-	// if wg := ctx.Flags.String("wg"); wg != "" {
-	// 	if tunIP = ctx.Flags.String("tun-ip"); tunIP != "" {
-	// 		if err := checkUniqueIP(tunIP); err != nil {
-	// 			tunIP = genUniqueIP()
-	// 		}
-	// 	} else {
-	// 		tunIP = genUniqueIP()
-	// 	}
-	// }
+	var tunIP net.IP
+	var err error
+	if wg := ctx.Flags.String("wg"); wg != "" {
+		tunIP, err = genUniqueIP()
+		if err != nil {
+			fmt.Printf(Warn + "Failed to generate unique ip for wg peer tun interface")
+			return nil
+		}
+	}
 
 	config := &clientpb.ImplantConfig{
 		GOOS:             targetOS,
@@ -391,7 +391,7 @@ func parseCompileFlags(ctx *grumble.Context) *clientpb.ImplantConfig {
 		C2:               c2s,
 		CanaryDomains:    canaryDomains,
 
-		WGTunIP: tunIP,
+		WGPeerTunIP: tunIP.String(),
 
 		ReconnectInterval:   uint32(reconnectInterval),
 		MaxConnectionErrors: uint32(maxConnectionErrors),
@@ -849,4 +849,71 @@ func displayCanaries(canaries []*clientpb.DNSCanary, burnedOnly bool) {
 			fmt.Printf("%s\n", line)
 		}
 	}
+}
+
+func genUniqueIP() (net.IP, error) {
+	peersTunIps, err := db.WGPeerTunIPs()
+	if err != nil {
+		fmt.Printf(Warn+"Failed to retrieve list WG Peers IPs %s", err)
+		return nil, err
+	}
+
+	addressPool, err := Hosts("192.168.174.0/23")
+	if err != nil {
+		fmt.Printf(Warn+"Failed to generate host address pool for WG Peers IPs %s", err)
+		return nil, err
+	}
+
+	for _, address := range addressPool {
+		for _, peerTunIp := range peersTunIps {
+			if peerTunIp.Equal(net.ParseIP(address)) {
+				addressPool = remove(addressPool, []string{peerTunIp.String()})
+				break
+			}
+		}
+	}
+
+	return net.ParseIP(addressPool[0]), nil
+}
+
+var reservedAddresses = []string{"192.168.174.0", "192.168.175.0", "192.168.174.1", "192.168.174.255", "192.168.175.255"}
+
+func Hosts(cidr string) ([]string, error) {
+	ip, ipnet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return nil, err
+	}
+
+	var ips []string
+	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
+		ips = append(ips, ip.String())
+	}
+
+	ips = remove(ips, reservedAddresses)
+	return ips, nil
+}
+
+func inc(ip net.IP) {
+	for j := len(ip) - 1; j >= 0; j-- {
+		ip[j]++
+		if ip[j] > 0 {
+			break
+		}
+	}
+}
+
+func remove(s []string, r []string) []string {
+	var result []string
+	for _, v := range s {
+		shouldAppend := true
+		for _, value := range r {
+			if v == value {
+				shouldAppend = false
+			}
+		}
+		if shouldAppend {
+			result = append(result, v)
+		}
+	}
+	return result
 }

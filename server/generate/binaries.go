@@ -115,7 +115,7 @@ func ImplantConfigFromProtobuf(pbConfig *clientpb.ImplantConfig) (string, *model
 
 	cfg.WGImplantPrivKey = pbConfig.WGImplantPrivKey
 	cfg.WGServerPubKey = pbConfig.WGServerPubKey
-	cfg.WGTunIP = pbConfig.WGTunIP
+	cfg.WGPeerTunIP = pbConfig.WGPeerTunIP
 	cfg.ReconnectInterval = pbConfig.ReconnectInterval
 	cfg.MaxConnectionErrors = pbConfig.MaxConnectionErrors
 
@@ -429,6 +429,18 @@ func renderSliverGoCode(name string, config *models.ImplantConfig, goConfig *gog
 	config.CACert = string(serverCACert)
 	config.Cert = string(sliverCert)
 	config.Key = string(sliverKey)
+
+	// WG Keys
+	if config.WGc2Enabled {
+		privKey, pubKey, err := certs.ImplantGenerateWGKeys()
+		if err != nil {
+			return "", fmt.Errorf("Failed to embed implant wg keys: %s", err)
+		} else {
+			config.WGImplantPrivKey = privKey
+			config.WGServerPubKey = pubKey
+
+		}
+	}
 
 	// binDir - ~/.sliver/slivers/<os>/<arch>/<name>/bin
 	binDir := path.Join(projectGoPathDir, "bin")

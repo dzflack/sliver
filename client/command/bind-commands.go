@@ -149,7 +149,6 @@ func BindCommands(app *grumble.App, rpc rpcpb.SliverRPCClient) {
 		Flags: func(f *grumble.Flags) {
 			f.Int("l", "lport", defaultWGLPort, "wg server UDP listen port")
 
-			f.String("i", "server-tun-ip", "192.168.175.1", "IPv4 address of server tun interface")
 			f.Int("n", "nport", defaultWGNPort, "server tun interface listen port")
 
 			f.Int("t", "timeout", defaultTimeout, "command timeout in seconds")
@@ -399,8 +398,6 @@ func BindCommands(app *grumble.App, rpc rpcpb.SliverRPCClient) {
 			f.String("n", "dns", "", "dns connection strings")
 			f.String("p", "named-pipe", "", "named-pipe connection strings")
 			f.String("i", "tcp-pivot", "", "tcp-pivot connection strings")
-
-			f.String("f", "tun-ip", "", "IP for agent wg tun interface")
 
 			f.Int("j", "reconnect", defaultReconnect, "attempt to reconnect every n second(s)")
 			f.Int("k", "max-errors", defaultMaxErrors, "max number of connection errors")

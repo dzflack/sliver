@@ -62,7 +62,7 @@ func newDBClient() *gorm.DB {
 		&models.WebContent{},
 		&models.Website{},
 		&models.WGKeys{},
-		&models.WGPeers{},
+		&models.WGPeer{},
 	)
 	if err != nil {
 		clientLog.Error(err)

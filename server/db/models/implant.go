@@ -75,7 +75,7 @@ type ImplantConfig struct {
 
 	WGImplantPrivKey string
 	WGServerPubKey   string
-	WGTunIP          string
+	WGPeerTunIP      string
 
 	C2 []ImplantC2
 

@@ -125,7 +125,7 @@ func (rpc *Server) StartWGListener(ctx context.Context, req *clientpb.WGListener
 		nListenPort = uint16(req.NPort)
 	}
 
-	job, err := c2.StartWGListenerJob(listenPort, req.TunIP, nListenPort)
+	job, err := c2.StartWGListenerJob(listenPort, nListenPort)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,6 @@ func (rpc *Server) StartWGListener(ctx context.Context, req *clientpb.WGListener
 	if req.Persistent {
 		cfg := &configs.WGJobConfig{
 			Port:  listenPort,
-			TunIP: req.TunIP,
 			NPort: nListenPort,
 		}
 		configs.GetServerConfig().AddWGJob(cfg)
