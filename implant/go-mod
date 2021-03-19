@@ -2,7 +2,12 @@ module github.com/bishopfox/sliver
 
 go 1.16
 
-replace golang.zx2c4.com/wireguard => golang.zx2c4.com/wireguard v0.0.0-20210311162910-5f0c8b942d93
+replace (
+	// fix wgctrl requiring old wireguard
+	golang.zx2c4.com/wireguard => golang.zx2c4.com/wireguard v0.0.0-20210311162910-5f0c8b942d93
+	// use tailscale's thinned down gvisor netstack
+	gvisor.dev/gvisor/pkg/ => github.com/inetaf/netstack/ v0.0.0-20210317161235-a1bf4e56ef22
+)
 
 require (
         github.com/BurntSushi/xgb v0.0.0-20210121224620-deaf085860bc // indirect
