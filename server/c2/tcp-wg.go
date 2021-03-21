@@ -8,6 +8,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/bishopfox/sliver/netstack"
 	"github.com/bishopfox/sliver/protobuf/sliverpb"
 	"github.com/bishopfox/sliver/server/certs"
 	"github.com/bishopfox/sliver/server/core"
@@ -16,7 +17,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
-	"golang.zx2c4.com/wireguard/tun/netstack"
 )
 
 var (
@@ -24,7 +24,7 @@ var (
 	tunIP = "192.168.174.1" // Don't let user configure this for now
 )
 
-func StartWGListener(port uint16, netstackPort uint16) (net.Listener, *device.Device, error) {
+func StartWGListener(port uint16, netstackPort uint16) (net.Listener, *device.Device, *bytes.Buffer, error) {
 	StartPivotListener()
 	wgLog.Infof("Starting Wireguard listener on port: %d", port)
 
@@ -37,14 +37,14 @@ func StartWGListener(port uint16, netstackPort uint16) (net.Listener, *device.De
 		wgLog.Panic(err)
 	}
 
-	// Get existing certs
+	// Get existing keys
 	privateKey, _, err := certs.GetWGServerKeys()
 
 	if err != nil {
 		isPeer := false
 		privateKey, _, err = certs.GenerateWGKeys(isPeer, "")
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(int(wgLog.Level), "[c2/wg] "))
@@ -55,7 +55,7 @@ func StartWGListener(port uint16, netstackPort uint16) (net.Listener, *device.De
 
 	peers, err := certs.GetWGPeers()
 	if err != nil && err != certs.ErrWGPeerDoesNotExist {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	for k, v := range peers {
@@ -64,7 +64,7 @@ func StartWGListener(port uint16, netstackPort uint16) (net.Listener, *device.De
 	}
 
 	if err := dev.IpcSetOperation(bufio.NewReader(wgConf)); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	dev.Up()
@@ -75,7 +75,7 @@ func StartWGListener(port uint16, netstackPort uint16) (net.Listener, *device.De
 	}
 
 	go acceptWGSliverConnections(listener)
-	return listener, dev, nil
+	return listener, dev, wgConf, nil
 }
 
 func acceptWGSliverConnections(ln net.Listener) {
@@ -85,7 +85,7 @@ func acceptWGSliverConnections(ln net.Listener) {
 			if errType, ok := err.(*net.OpError); ok && errType.Op == "accept" {
 				break
 			}
-			mtlsLog.Errorf("Accept failed: %v", err)
+			wgLog.Errorf("Accept failed: %v", err)
 			continue
 		}
 		go handleWGSliverConnection(conn)
@@ -93,7 +93,7 @@ func acceptWGSliverConnections(ln net.Listener) {
 }
 
 func handleWGSliverConnection(conn net.Conn) {
-	mtlsLog.Infof("Accepted incoming connection: %s", conn.RemoteAddr())
+	wgLog.Infof("Accepted incoming connection: %s", conn.RemoteAddr())
 
 	session := &core.Session{
 		Transport:     "wg",
@@ -105,7 +105,7 @@ func handleWGSliverConnection(conn net.Conn) {
 	session.UpdateCheckin()
 
 	defer func() {
-		mtlsLog.Debugf("Cleaning up for %s", session.Name)
+		wgLog.Debugf("Cleaning up for %s", session.Name)
 		core.Sessions.Remove(session.ID)
 		conn.Close()
 	}()
@@ -120,7 +120,7 @@ func handleWGSliverConnection(conn net.Conn) {
 		for {
 			envelope, err := socketWGReadEnvelope(conn)
 			if err != nil {
-				mtlsLog.Errorf("Socket read error %v", err)
+				wgLog.Errorf("Socket read error %v", err)
 				return
 			}
 			session.UpdateCheckin()
@@ -142,23 +142,23 @@ Loop:
 		case envelope := <-session.Send:
 			err := socketWGWriteEnvelope(conn, envelope)
 			if err != nil {
-				mtlsLog.Errorf("Socket write failed %v", err)
+				wgLog.Errorf("Socket write failed %v", err)
 				break Loop
 			}
 		case <-done:
 			break Loop
 		}
 	}
-	mtlsLog.Infof("Closing connection to session %s", session.Name)
+	wgLog.Infof("Closing connection to session %s", session.Name)
 }
 
-// socketWGWriteEnvelope - Writes a message to the TLS socket using length prefix framing
+// socketWGWriteEnvelope - Writes a message to the wireguard socket using length prefix framing
 // which is a fancy way of saying we write the length of the message then the message
 // e.g. [uint32 length|message] so the receiver can delimit messages properly
 func socketWGWriteEnvelope(connection net.Conn, envelope *sliverpb.Envelope) error {
 	data, err := proto.Marshal(envelope)
 	if err != nil {
-		mtlsLog.Errorf("Envelope marshaling error: %v", err)
+		wgLog.Errorf("Envelope marshaling error: %v", err)
 		return err
 	}
 	dataLengthBuf := new(bytes.Buffer)
@@ -168,7 +168,7 @@ func socketWGWriteEnvelope(connection net.Conn, envelope *sliverpb.Envelope) err
 	return nil
 }
 
-// socketWGReadEnvelope - Reads a message from the TLS connection using length prefix framing
+// socketWGReadEnvelope - Reads a message from the wireguard connection using length prefix framing
 // returns messageType, message, and error
 func socketWGReadEnvelope(connection net.Conn) (*sliverpb.Envelope, error) {
 
@@ -176,7 +176,7 @@ func socketWGReadEnvelope(connection net.Conn) (*sliverpb.Envelope, error) {
 	dataLengthBuf := make([]byte, 4) // Size of uint32
 	_, err := connection.Read(dataLengthBuf)
 	if err != nil {
-		mtlsLog.Errorf("Socket error (read msg-length): %v", err)
+		wgLog.Errorf("Socket error (read msg-length): %v", err)
 		return nil, err
 	}
 	dataLength := int(binary.LittleEndian.Uint32(dataLengthBuf))
@@ -198,20 +198,20 @@ func socketWGReadEnvelope(connection net.Conn) (*sliverpb.Envelope, error) {
 			break
 		}
 		if err != nil {
-			mtlsLog.Errorf("Read error: %s", err)
+			wgLog.Errorf("Read error: %s", err)
 			break
 		}
 	}
 
 	if err != nil {
-		mtlsLog.Errorf("Socket error (read data): %v", err)
+		wgLog.Errorf("Socket error (read data): %v", err)
 		return nil, err
 	}
 	// Unmarshal the protobuf envelope
 	envelope := &sliverpb.Envelope{}
 	err = proto.Unmarshal(dataBuf, envelope)
 	if err != nil {
-		mtlsLog.Errorf("Un-marshaling envelope error: %v", err)
+		wgLog.Errorf("Un-marshaling envelope error: %v", err)
 		return nil, err
 	}
 	return envelope, nil

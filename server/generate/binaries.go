@@ -76,7 +76,7 @@ const (
 	LINUX = "linux"
 
 	// GoPrivate - The default Go private arg to garble when obfuscation is enabled
-	GoPrivate = "github.com/*,golang.org/*"
+	GoPrivate = "github.com/bishopfox/*,github.com/Microsoft/*,github.com/burntsushi/*,github.com/kbinani/*,github.com/lxn/*,github.com/golang/*,github.com/shm/*"
 
 	clientsDirName = "clients"
 	sliversDirName = "slivers"

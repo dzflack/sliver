@@ -128,7 +128,7 @@ func startWGListener(ctx *grumble.Context, rpc rpcpb.SliverRPCClient) {
 	nport := uint16(ctx.Flags.Int("nport"))
 
 	fmt.Printf(Info + "Starting Wireguard listener ...\n")
-	mtls, err := rpc.StartWGListener(context.Background(), &clientpb.WGListenerReq{
+	wg, err := rpc.StartWGListener(context.Background(), &clientpb.WGListenerReq{
 		Port:       uint32(lport),
 		NPort:      uint32(nport),
 		Persistent: ctx.Flags.Bool("persistent"),
@@ -136,7 +136,7 @@ func startWGListener(ctx *grumble.Context, rpc rpcpb.SliverRPCClient) {
 	if err != nil {
 		fmt.Printf("\n"+Warn+"%s\n", err)
 	} else {
-		fmt.Printf("\n"+Info+"Successfully started job #%d\n", mtls.JobID)
+		fmt.Printf("\n"+Info+"Successfully started job #%d\n", wg.JobID)
 	}
 }
 

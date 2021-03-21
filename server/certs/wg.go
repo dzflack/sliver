@@ -22,27 +22,18 @@ var (
 func GetWGPeers() (map[string]string, error) {
 
 	peers := make(map[string]string)
-	wgKeysLog.Infof("Getting WG peers")
 
-	wgPeerModel := models.WGPeer{}
+	wgPeerModels := []models.WGPeer{}
 	dbSession := db.Session()
-	result := dbSession.Find(&wgPeerModel)
-	if errors.Is(result.Error, db.ErrRecordNotFound) {
+	err := dbSession.Where(&models.WGPeer{}).Find(&wgPeerModels).Error
+	if errors.Is(err, db.ErrRecordNotFound) {
 		return nil, ErrWGPeerDoesNotExist
-	}
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	rows, err := result.Rows()
-	if err != nil {
+	} else if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var wgPeer models.WGPeer
-		dbSession.ScanRows(rows, &wgPeer)
-		peers[wgPeer.PubKey] = wgPeer.TunIP
+	for _, v := range wgPeerModels {
+		peers[v.PubKey] = v.TunIP
 	}
 	return peers, nil
 }
@@ -95,12 +86,12 @@ func saveWGKeys(isPeer bool, wgPeerTunIP string, privKey string, pubKey string) 
 	var result *gorm.DB
 
 	if isPeer {
-		wgPeerModel := &models.WGPeer{
+		wgPeerModels := &models.WGPeer{
 			PrivKey: privKey,
 			PubKey:  pubKey,
 			TunIP:   wgPeerTunIP,
 		}
-		result = dbSession.Create(&wgPeerModel)
+		result = dbSession.Create(&wgPeerModels)
 
 	} else {
 		wgKeysModel := &models.WGKeys{
