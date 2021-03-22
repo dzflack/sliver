@@ -8,6 +8,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/bishopfox/sliver/client/command"
 	"github.com/bishopfox/sliver/netstack"
 	"github.com/bishopfox/sliver/protobuf/sliverpb"
 	"github.com/bishopfox/sliver/server/certs"
@@ -47,7 +48,7 @@ func StartWGListener(port uint16, netstackPort uint16) (net.Listener, *device.De
 			return nil, nil, nil, err
 		}
 	}
-	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(int(wgLog.Level), "[c2/wg] "))
+	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelVerbose, "[c2/wg] "))
 
 	wgConf := bytes.NewBuffer(nil)
 	fmt.Fprintf(wgConf, "private_key=%s\n", privateKey)
@@ -69,13 +70,59 @@ func StartWGListener(port uint16, netstackPort uint16) (net.Listener, *device.De
 
 	dev.Up()
 
+	// Open up key exchange TCP socket
+	keyExchangeListener, err := tnet.ListenTCP(&net.TCPAddr{IP: net.ParseIP(tunIP), Port: 1337})
+	if err != nil {
+		wgLog.Panic("Failed to setup up wg key exchange listener: %s", err)
+	}
+	wgLog.Printf("Successfully setup up wg key exchange listener")
+	go acceptKeyExchangeConnection(keyExchangeListener)
+
+	// Open up listener TCP socket
 	listener, err := tnet.ListenTCP(&net.TCPAddr{IP: net.ParseIP(tunIP), Port: int(netstackPort)})
 	if err != nil {
-		wgLog.Panic(err)
+		wgLog.Panic("Failed to setup up wg sliver listener: %s", err)
 	}
-
+	wgLog.Printf("Successfully setup up wg sliver listener")
 	go acceptWGSliverConnections(listener)
 	return listener, dev, wgConf, nil
+}
+
+func acceptKeyExchangeConnection(ln net.Listener) {
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			if errType, ok := err.(*net.OpError); ok && errType.Op == "accept" {
+
+				break
+			}
+			wgLog.Errorf("Accept failed: %v", err)
+			continue
+		}
+		wgLog.Infof("Accepted connection to wg key exchange listener: %s", conn.RemoteAddr())
+		go handleKeyExchangeConnection(conn)
+	}
+}
+
+func handleKeyExchangeConnection(conn net.Conn) {
+	defer conn.Close()
+	ip, err := command.GenUniqueIP()
+	if err != nil {
+		wgLog.Errorf("Failed to generate unique IP: %s", err)
+	}
+
+	implantPrivKey, _, err := certs.ImplantGenerateWGKeys(ip.String())
+	_, serverPubKey, err := certs.GetWGServerKeys()
+
+	if err != nil {
+		wgLog.Errorf("Failed to generate new wg keys: %s", err)
+	} else {
+		wgLog.Infof("Successfully generated new wg keys")
+		message := implantPrivKey + "|" + serverPubKey + "|" + string(ip)
+
+		wgLog.Infof("Sending new wg keys and IP: %s", message)
+		conn.Write([]byte(message))
+	}
 }
 
 func acceptWGSliverConnections(ln net.Listener) {

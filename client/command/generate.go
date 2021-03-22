@@ -374,7 +374,7 @@ func parseCompileFlags(ctx *grumble.Context) *clientpb.ImplantConfig {
 	var tunIP net.IP
 	var err error
 	if wg := ctx.Flags.String("wg"); wg != "" {
-		tunIP, err = genUniqueIP()
+		tunIP, err = GenUniqueIP()
 		if err != nil {
 			fmt.Printf(Warn + "Failed to generate unique ip for wg peer tun interface")
 			return nil
@@ -851,7 +851,7 @@ func displayCanaries(canaries []*clientpb.DNSCanary, burnedOnly bool) {
 	}
 }
 
-func genUniqueIP() (net.IP, error) {
+func GenUniqueIP() (net.IP, error) {
 	peersTunIps, err := db.WGPeerTunIPs()
 	if err != nil {
 		fmt.Printf(Warn+"Failed to retrieve list WG Peers IPs %s", err)
