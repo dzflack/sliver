@@ -18,6 +18,13 @@ var (
 	ErrWGServerKeysDoNotExist = errors.New("WG server keys do not exist")
 )
 
+func SetupWGKeys() {
+	if _, _, err := GetWGServerKeys(); err != nil {
+		wgKeysLog.Infof("No wg server keys detected")
+		GenerateWGKeys(false, "")
+	}
+}
+
 // GetWGSPeers - Get the WG peers
 func GetWGPeers() (map[string]string, error) {
 
@@ -77,7 +84,7 @@ func genWGKeys() (string, string) {
 	return hex.EncodeToString(privateKey[:]), hex.EncodeToString(publicKey[:])
 }
 
-// saveWGKeys - Save WG keys to the filesystem
+// saveWGKeys - Save WG keys to the database
 func saveWGKeys(isPeer bool, wgPeerTunIP string, privKey string, pubKey string) error {
 
 	wgKeysLog.Infof("Saving WG keys")
