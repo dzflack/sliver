@@ -858,7 +858,10 @@ func GenUniqueIP() (net.IP, error) {
 		return nil, err
 	}
 
-	addressPool, err := Hosts("192.168.174.0/23")
+	// Use the 100.64.0.1/16 range for TUN ips.
+	// This range chosen due to Tailscale also using it (Cut down to /16 instead of /10)
+	// https://tailscale.com/kb/1015/100.x-addresses
+	addressPool, err := Hosts("100.64.0.1/16")
 	if err != nil {
 		fmt.Printf(Warn+"Failed to generate host address pool for WG Peers IPs %s", err)
 		return nil, err
@@ -876,7 +879,8 @@ func GenUniqueIP() (net.IP, error) {
 	return net.ParseIP(addressPool[0]), nil
 }
 
-var reservedAddresses = []string{"192.168.174.0", "192.168.175.0", "192.168.174.1", "192.168.174.255", "192.168.175.255"}
+// Prevent use of 100.64.0.{0|1} in ips assigned  to peers
+var reservedAddresses = []string{"100.64.0.0", "100.64.0.1"}
 
 func Hosts(cidr string) ([]string, error) {
 	ip, ipnet, err := net.ParseCIDR(cidr)

@@ -119,8 +119,7 @@ func StartWGListenerJob(listenPort uint16, nListenPort uint16) (*core.Job, error
 					}
 					jobLog.Infof("Successfully updated Wireguard config")
 				}
-				jobLog.Infof("No new WG peers. no update to Wireguard config")
-
+				// jobLog.Infof("No new WG peers. no update to Wireguard config")
 			}
 		}
 	}(dev, currenWGConf)

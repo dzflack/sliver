@@ -22,7 +22,7 @@ import (
 
 var (
 	wgLog = log.NamedLogger("c2", "wg")
-	tunIP = "192.168.174.1" // Don't let user configure this for now
+	tunIP = "100.64.0.1" // Don't let user configure this for now
 )
 
 func StartWGListener(port uint16, netstackPort uint16) (net.Listener, *device.Device, *bytes.Buffer, error) {
@@ -48,7 +48,9 @@ func StartWGListener(port uint16, netstackPort uint16) (net.Listener, *device.De
 			return nil, nil, nil, err
 		}
 	}
-	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelVerbose, "[c2/wg] "))
+
+	// Set this to device.LogLevelVerbose when debugging
+	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelSilent, "[c2/wg] "))
 
 	wgConf := bytes.NewBuffer(nil)
 	fmt.Fprintf(wgConf, "private_key=%s\n", privateKey)
@@ -89,11 +91,12 @@ func StartWGListener(port uint16, netstackPort uint16) (net.Listener, *device.De
 }
 
 func acceptKeyExchangeConnection(ln net.Listener) {
+	wgLog.Printf("Polling for connections to key exchange listener")
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			if errType, ok := err.(*net.OpError); ok && errType.Op == "accept" {
-
+				wgLog.Errorf("Accept failed: %v", err)
 				break
 			}
 			wgLog.Errorf("Accept failed: %v", err)
@@ -105,6 +108,8 @@ func acceptKeyExchangeConnection(ln net.Listener) {
 }
 
 func handleKeyExchangeConnection(conn net.Conn) {
+	wgLog.Infof("Handling connection to key exchange listener")
+
 	defer conn.Close()
 	ip, err := command.GenUniqueIP()
 	if err != nil {
